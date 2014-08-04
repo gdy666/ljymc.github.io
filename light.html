@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,minimum-scale=1.0,user-scalable=no" />
+    <title>LED灯控制</title>
+    <link rel="stylesheet" href="main.css">
+    <style type="text/css">
+        .main{padding:5px;}
+        header{ width: 100%;height:248px; -webkit-box-sizing: border-box; overflow: hidden;background-image:url(header.png);background-repeat:no-repeat;background-position:50% 50%;background-color:#679CE9;background-size:auto 100%;}
+        header>img{width: 100%}
+        .top{display:block; height: 60px; line-height: 60px; border-bottom: 1px solid #dedede; position: relative;}
+        .middle{display:block; height: 140px; position: relative;}
+        h1{color: #444444; font-size: 18px; margin: 0; text-indent: 5px;}
+        .frame{border: 1px solid #d4d4d4; border-radius: 30px 30px ; height: 30px; width: 54px; position: absolute; right: 0; top: 15px;-webkit-tap-highlight-color:rgba(0,0,0,0);}
+        .button{background:gray; border-radius: 24px; height: 24px; width: 24px; position: absolute; top: 3px; left: 3px; -webkit-transition:all ease-out .2s;}
+        .open .button{left: 27px;background: #2288dd;}
+         li{list-style: none;}
+         .res_tip{margin:0;width:100%;float:left;padding:0}
+        .middle ul li{float:left;width:100%;text-indent: 5px;border-bottom: 1px solid #dedede;height:70px;line-height:70px}
+        .res_tip_li p{text-align:left;}
+        .tip{padding:0 0 0 0;}
+        .tip li{line-height: 24px; margin: 0 0 8px 0; color: #404040; font-size: 14px;}
+        .loading{background: black; height: 40px; width: 100px; line-height: 40px; position: absolute;top:auto; bottom:40px; margin:0 auto; color: #fff; text-align: center; left: 50%; margin-left: -50px; -webkit-transition:all ease-out .2s; opacity: 0;}
+        .heightlight{color:#528de4;font-weight:bold;font-size:40px;}
+        .abs_hide{display: none;}
+        .jiasu_1{font-size: 18px;}
+        .jiasu_1 img{vertical-align:middle;}
+        .jiasu_1 .tip_text{margin-left:10px;}
+        .jiasu_1 .unit{margin-left:3px;}
+        .jiasu_2{float:right;margin-right:0;}
+        .delay{color: #666666;padding-left:10px;padding-top:5px;font-size:12px;}
+        .source_light{color:#528de4;font-weight:bold;}
+        .head_tip{margin-top:83px;text-align: center}
+        .head_tip .head_heightlight{color:white;font-weight:bold;font-size:54px;}
+        .head_tip_s{margin-top:0px;font-weight: bold;}
+        .head_tip_s text{color:white;}
+    </style>
+</head>
+<body>
+<div class="main">
+    <header>
+        <div class="head_tip">
+        <div class="head_tip_f"><text class="head_heightlight">LED灯开关<text></div>
+        <!-- div class="head_tip_s"><text>LED控制开关<text></div-->
+        </div>
+    </header>
+    <section class="top">
+        <h3 class="plugin_able">指示灯控制</h3>
+        <span class="open frame" id="turn"><span class="button"></span></span>
+    </section>
+    <ul class="tip">
+        <li>小米路由器LED灯控制</li>
+    </ul>
+</div>
+<div id="loading" class="loading">正在加载…</div>
+<div id="debug">DBG</div>
+<script src="jquery-1.11.1.min.js"></script>
+<script src="router_request.js"></script>
+<script>
+    var appId = "2882303761517239299";
+    var u_id = '';
+    var lock = false;
+    var errorCode = {
+        2501 : '安装插件失败',
+        2502 : '控制插件失败',
+        2503 : '插件包不存在',
+        2504 : '请输入插件ID',
+        2505 : '配置信息key不能以数字开头',
+        2506 : '此插件正在安装',
+        2507 : '此插件已经安装',
+        2508 : '插件签名验证错误',
+        2509 : '签名类型错误',
+        2510 : '更新状态出错',
+        2511 : 'Pid不存在',
+        2512 : '插件不存在',
+        2513 : 'sdk版本过低',
+        2514 : 'mount userdisk 出错',
+        2515 : '无法获取设备id'
+    };
+    function tip_status_show(tip_str){
+        $('#loading').text(tip_str).css('opacity', '1');
+    }
+    function tip_status_hide(){
+        $('#loading').css('opacity', '0');
+    }
+    function getStatus(){
+        routerRequest.request({
+            path: "/api-third-party/service/datacenter/plugin_control",
+            data: {
+                appId : appId,
+                info  : "status",
+            },
+            success: function(data) {
+                data = $.parseJSON(data);
+                if(data.code == 0){
+					if (data.status==0)
+			            $('#turn').removeClass('open');
+					else
+			            $('#turn').addClass('open');
+			        $('#debug').text("Ready");
+                }else if(data.code in errorCode){
+                    $('#debug').text('ERROR1:' + errorCode[data.code]);
+                }else{
+                    data.msg && $('#debug').text('ERROR2:' + data.msg);
+                }
+            },
+            error: function(data) {
+                tip_status_show("请稍后重试……");
+                setTimeout(tip_status_hide(),2000);
+            }
+        });
+    }
+
+    function toggleStatus(evt){
+        var target = evt.target;
+        var text = $('#turn').hasClass('open') ? "关闭" : "打开";
+        var info = $('#turn').hasClass('open') ? "off" : "on";
+
+        if(lock){return}
+        lock = true;
+
+        $('#loading').text('正在' + text + '…').css('opacity', '1');
+        routerRequest.request({
+            path: "/api-third-party/service/datacenter/plugin_control",
+            type: "GET",
+            dataType: 'json',
+            data: {
+                appId : appId,
+                info  : info,
+            },
+            success: function(data) {
+                data = $.parseJSON(data);
+                if(data.code == 0){
+					if ($('#turn').hasClass('open')){
+						$('#turn').removeClass('open');
+			            $('#debug').text("关闭");
+					}else{
+						$('#turn').addClass('open');
+			            $('#debug').text("开启");
+					}
+                }else if(data.code in errorCode){
+                    $('#debug').text('ERROR1:' + errorCode[data.code]);
+                }else{
+                    data.msg && $('#debug').text('ERROR2:' + data.msg);
+                }
+                lock = false;
+                $('#loading').css('opacity', '0');
+            },
+            error: function(data){
+                lock = false;
+                $('#loading').css('opacity', '0');
+                tip_status_show("操作过于频繁 请稍后重试....");
+                window.setTimeout("tip_status_hide()",2500);
+            }
+        }); 
+    }
+
+    $(document).ready(function(){
+        if (!routerRequest.hasAccessToken()) {
+            routerRequest.authorize(window.location.href, appId);
+        }
+        $('#turn').bind('click', toggleStatus);
+		$('#debug').text("Get status...");
+        getStatus();
+    });
+</script>
+</body>
+</html>
